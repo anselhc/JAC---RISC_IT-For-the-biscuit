@@ -5,19 +5,19 @@ This document covers what and why design decisions in the this project were made
 Modularity would be beneficial for productive teaming
 Potential module structure:
 
-- Top module
+- Top module (Connor)
   - Instances other modules
   - Process instruction type
   - ALU destination selection
 - Memory module
   - inputs: clk, func3, dmem_wren, dmem_data, dmem_address, imem_address
   - outputs: dmem_data, imem_data, reset
-- Controller module
+- Controller module (Jake)
   - inputs: clk
   - outputs: PC
   - Updates program counter
   - Handles JAL instructions
-- ALU module
+- ALU module (Ansel)
   - inputs: clk
   - output: ALU output
   - Determines ALU inputs
