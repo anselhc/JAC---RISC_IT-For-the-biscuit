@@ -10,7 +10,7 @@ Potential module structure:
   - Process instruction type
   - ALU destination selection
 - Memory module
-  - inputs: clk, func3?, dmem_wren?, dmem_data, dmem_address, imem_address
+  - inputs: clk, func3, dmem_wren, dmem_data, dmem_address, imem_address
   - outputs: dmem_data, imem_data, reset
 - Controller module
   - inputs: clk
@@ -23,4 +23,3 @@ Potential module structure:
   - Determines ALU inputs
     - Immediate processing
   - Determines ALU function
--

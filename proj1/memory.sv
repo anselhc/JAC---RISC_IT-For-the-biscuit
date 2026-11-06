@@ -28,7 +28,7 @@ module memory #(
     parameter DMEM_INIT_FILE_PREFIX = "", 
     parameter CLK_FREQ = 12000000
 )(
-    input logic     clk, 
+    input logic     clk,
     input logic     [2:0] funct3, 
     input logic     dmem_wren, 
     input logic     [31:0] dmem_address, 
