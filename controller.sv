@@ -3,7 +3,7 @@
 //  Clock (CLK) 
 //  Reset (rst)
 //  PC Write (pc_wrt)
-//  opcode [6:0]
+//  Opcode (op_code) [6:0]
 //  Immediate (imm) [31:0]
 //  RS1 value (rs1_val) [31:0] 
 //  Branch Condition (TRUE/FALSE)
@@ -33,10 +33,42 @@ module controller (
     input  logic        clk, // Binary (high or low)
     input  logic        reset, // Resets PC, Binary (high or low)
     input  logic        pc_wrt, // Enables PC writing, Binary (high or low)
-    input  logic [6:0]  opcode, // 7 bits from end of word
+    input  logic [6:0]  op_code, // 7 bits from end of word
     input  logic signed [31:0] imm, // 
     input  logic [31:0] rs1_val, // 
     input  logic        branch_taken, // Returned from ALU, Binary (high or low)
     output logic [31:0] pc, // Program counter value
     output logic [31:0] pc_pl4 // Program counter plus 4 for JAL instructions
 );
+
+
+// Define Opcodes
+localparam logic [6:0] OP_JAL    = 7'b1101111; // JAL
+localparam logic [6:0] OP_JALR   = 7'b1100111; // JALR
+localparam logic [6:0] OP_BRANCH = 7'b1100011; // Branching
+
+// Logic flow:
+// 1. Determine instruction type
+// 2. Have a bunch of cases for the instruction types
+// 3. Process the specific case
+// 4. Write PC
+
+logic [31:0] next_pc;
+
+assign pc_plus4 = pc + 32'd4;
+
+// Decide where to go next
+always_comb begin
+  case (opcode)
+    OP_JAL:    next_pc = pc + imm; // Jump imm / 4 instructions
+    OP_JALR:   next_pc = (rs1_val + imm) & ~32'h1; // Ensure the final bit is always 0 so there are no odd memory addresses
+    OP_BRANCH: next_pc = branch_taken ? pc + imm : pc_plus4; // If true, pc + imm, if false pc + 4 like normal
+    default:   next_pc = pc_plus4;
+  endcase
+end
+
+// Remember the value determined in always_comb
+always_ff @(posedge clk) begin
+  if (reset)         pc <= 32'h0; // Reset the program counter to 0
+  else if (pc_write) pc <= next_pc; // Write the PC value determined in always_comb to the output register
+end
