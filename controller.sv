@@ -38,5 +38,5 @@ module controller (
     input  logic [31:0] rs1_val, // 
     input  logic        branch_taken, // Returned from ALU, Binary (high or low)
     output logic [31:0] pc, // Program counter value
-    output logic [31:0] pc_pl4 // Program counter plu
+    output logic [31:0] pc_pl4 // Program counter plus 4 for JAL instructions
 );
