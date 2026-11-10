@@ -43,9 +43,9 @@ module controller (
 
 
 // Define Opcodes
-localparam logic [6:0] OP_JAL    = 7'b1101111; // JAL
-localparam logic [6:0] OP_JALR   = 7'b1100111; // JALR
-localparam logic [6:0] OP_BRANCH = 7'b1100011; // Branching
+localparam logic [6:0] JAL    = 7'b1101111;
+localparam logic [6:0] JALR   = 7'b1100111; 
+localparam logic [6:0] BRANCH = 7'b1100011; 
 
 // Logic flow:
 // 1. Determine instruction type
@@ -53,22 +53,22 @@ localparam logic [6:0] OP_BRANCH = 7'b1100011; // Branching
 // 3. Process the specific case
 // 4. Write PC
 
-logic [31:0] next_pc;
+logic [31:0] pc_next;
 
-assign pc_plus4 = pc + 32'd4;
+assign pc_pl4 = pc + 32'd4;
 
 // Decide where to go next
 always_comb begin
-  case (opcode)
-    OP_JAL:    next_pc = pc + imm; // Jump imm / 4 instructions
-    OP_JALR:   next_pc = (rs1_val + imm) & ~32'h1; // Ensure the final bit is always 0 so there are no odd memory addresses
-    OP_BRANCH: next_pc = branch_taken ? pc + imm : pc_plus4; // If true, pc + imm, if false pc + 4 like normal
-    default:   next_pc = pc_plus4;
+  case (op_code)
+    JAL:    pc_next = pc + imm; // Jump imm / 4 instructions
+    JALR:   pc_next = (rs1_val + imm) & ~32'h1; // Ensure the final bit is always 0 so there are no odd memory addresses
+    BRANCH: pc_next = branch_taken ? pc + imm : pc_pl4; // If true, pc + imm, if false pc + 4 like normal
+    default:   pc_next = pc_pl4;
   endcase
 end
 
 // Remember the value determined in always_comb
 always_ff @(posedge clk) begin
   if (reset)         pc <= 32'h0; // Reset the program counter to 0
-  else if (pc_write) pc <= next_pc; // Write the PC value determined in always_comb to the output register
+  else if (pc_wrt) pc <= pc_next; // Write the PC value determined in always_comb to the output register
 end
