@@ -1,5 +1,11 @@
 `timescale 10ns/10ns
 `include "top.sv"
+// Include the file with the test instructions
+
+// Notes:
+// Make a file of all of the input instructions we will need
+// Make a file for what the output should be
+// Once the test bench finishes, write a python script that compares the two files line by line
 
 // Functionality:
 // Instances the top module of the processor
@@ -11,9 +17,14 @@
 module proj1_tb;
 
     logic clk = 0;
+    logic RGB_R, RGB_G, RGB_B;
+
 
     top u0 (
         .clk            (clk), 
+        .RGB_R          (RGB_R), 
+        .RGB_G          (RGB_G), 
+        .RGB_B          (RGB_B)
     );
 
     initial begin
@@ -29,4 +40,5 @@ module proj1_tb;
     end
 
 endmodule
+
 
