@@ -43,7 +43,7 @@ module controller (
 
 
 // Define Opcodes
-localparam logic [6:0] JAL    = 7'b1101111;
+localparam logic [6:0] JAL    = 7'b1101111; 
 localparam logic [6:0] JALR   = 7'b1100111; 
 localparam logic [6:0] BRANCH = 7'b1100011; 
 
@@ -53,13 +53,13 @@ localparam logic [6:0] BRANCH = 7'b1100011;
 // 3. Process the specific case
 // 4. Write PC
 
-logic [31:0] pc_next;
+logic [31:0] pc_next; // Value to be written to PC
 
 assign pc_pl4 = pc + 32'd4;
 
 // Decide where to go next
 always_comb begin
-  case (op_code)
+  unique case (op_code)
     JAL:    pc_next = pc + imm; // Jump imm / 4 instructions
     JALR:   pc_next = (rs1_val + imm) & ~32'h1; // Ensure the final bit is always 0 so there are no odd memory addresses
     BRANCH: pc_next = branch_taken ? pc + imm : pc_pl4; // If true, pc + imm, if false pc + 4 like normal

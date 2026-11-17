@@ -12,11 +12,17 @@ Potential module structure:
 - Memory module
   - inputs: clk, func3, dmem_wren, dmem_data, dmem_address, imem_address
   - outputs: dmem_data, imem_data, reset
-- Controller module (Jake)
-  - inputs: clk
-  - outputs: PC
-  - Updates program counter
-  - Handles JAL instructions
+//Inputs:
+//  Clock (CLK) 
+//  Reset (rst)
+//  PC Write (pc_wrt)
+//  Opcode (op_code) [6:0]
+//  Immediate (imm) [31:0]
+//  RS1 value (rs1_val) [31:0] 
+//  Branch Condition (TRUE/FALSE)
+//Outputs:
+//  Program Counter (pc) [31:0] 
+//  Program Counter + 4 (pc_pl4) [31:0]
 - ALU module (Ansel)
   - inputs: clk
   - output: ALU output
