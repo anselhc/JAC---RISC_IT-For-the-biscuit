@@ -7,6 +7,10 @@ module top (
     output logic RGB_G,
     output logic RGB_B
 );
+
+    //
+    instr_type_t current_instr_type;
+
     //
     logic [31:0] PC; // Program counter
 
@@ -43,17 +47,47 @@ module top (
     logic [1:0]  rd_sel;     // 0: alu_out, 1: dmem_out, 2: pc_pl4, 3: imm
 
     // Basically wires
-    logic [2:0]         funct3;
-    logic [6:0]         funct7;
+    logic [6:0] op_code;
+    logic [2:0] funct3;
+    logic [6:0] funct7;
     logic signed [31:0] imm;
-    logic [31:0]        pc_pl4;
-    logic [31:0]        alu_op1;
-    logic [31:0]        alu_op2;
-    logic [31:0]        alu_out;
-    logic               branch_taken;
-    logic [31:0]        dmem_addr;
-    logic [31:0]        dmem_in;
-    logic [31:0]        dmem_out;
+    logic [31:0] pc_pl4;
+    logic [31:0] alu_op1;
+    logic [31:0] alu_op2;
+    logic [31:0] alu_out;
+    logic branch_taken;
+    logic [31:0] dmem_addr;
+    logic [31:0] dmem_in;
+    logic [31:0] dmem_out;
+
+    assign op_code = instr[6:0];
+    assign funct3 = instr[14:12];
+    assign funct7 = instr[31:25];
+
+    // Data wires
+    assign dmem_addr = alu_out;
+    assign dmem_in = rs2_val;
+    assign branch_taken = alu_out[0];
+
+    //
+    logic fetch, decode, exec, mem, write;
+
+    always_ff @(posedge clk) begin
+    // FSM cycles through stages
+        if (reset) begin
+            fetch  <= 1'b1;
+            decode <= 1'b0;
+            exec   <= 1'b0;
+            mem    <= 1'b0;
+            write     <= 1'b0;
+        end else begin
+            fetch  <= write;
+            decode <= fetch;
+            exec   <= decode;
+            mem    <= exec;
+            write     <= mem;
+        end
+    end
 
     always_comb begin
         /* let "register file" == "RF". "instruction register" == "IR"
@@ -85,36 +119,47 @@ module top (
 
         */
         // functs from op_code
-        assign funct3 = instr[14:12];
-        assign funct7 = instr[31:25];
+        if (decode) begin
+            ir_write = 1'b1;
+        end
 
-        // Direct datapath wires
-        assign dmem_addr = alu_out;
-        assign dmem_in = rs2_val;
-        assign branch_taken = alu_out[0];
+        if (mem) begin
+            if (current_instr_type == S_STORE) begin
+                dmem_wren = 1'b1;
+            end
+        end
+
+        if (write) begin
+            pc_wrt = 1'b1;
+            case (current_instr_type)
+                R_ALU, I_ALU, I_LOAD, I_JALR, U_LUI, U_AUIPC, J_JAL: begin
+                    rf_wren = 1'b1;
+                end
+            endcase
+        end
     end
 
     always_comb begin
     // mux 1
-        if sel_op1:
-            alu_op1 <= PC
+        if (sel_op1)
+            alu_op1 = PC;
         else
-            alu_op1 <= rs1_val
+            alu_op1 = rs1_val;
     end
 
     always_comb begin
     // mux 2
-        if sel_op2:
-            alu_op2 <= imm
+        if (sel_op2)
+            alu_op2 = imm;
         else
-            alu_op2 <= rs2_val
+            alu_op2 = rs2_val;
     end
 
     always_comb begin
     // mux rd
         case (rd_sel)
             2'd0:    rd_val = alu_out;
-            2'd1:    rd_val = dmem_dout;
+            2'd1:    rd_val = dmem_out;
             2'd2:    rd_val = pc_pl4;
             2'd3:    rd_val = imm;
             default: rd_val = 32'd0;
@@ -122,7 +167,7 @@ module top (
     end
 
     always_comb begin
-    // de_code instructions
+    // decode instructions to flags
         sel_op1 = 1'b0;
         sel_op2 = 1'b0;
         rd_sel  = 2'd0;
@@ -141,7 +186,7 @@ module top (
             I_LOAD: begin
                 sel_op1 = 1'b0; // rs1_val
                 sel_op2 = 1'b1; // imm
-                rd_sel  = 2'd1; // dmem_dout
+                rd_sel  = 2'd1; // dmem_out
             end
             S_STORE: begin
                 sel_op1 = 1'b0; // rs1_val
@@ -165,12 +210,6 @@ module top (
         endcase
     end
 
-    // 
-    always_ff @(posedge clk) begin
-        // Cycle FSM through fetch, decode, execute, memory
-
-    end
-
     // always_comb begin
     // // always_comb logic [3:0] instruction_type(input logic [6:0] op_code)
     //     unique case (op_code)
@@ -188,7 +227,7 @@ module top (
     //     endcase
     // end
 
-    // De-code op-code
+    // De-code op-code to instr
     always_comb begin
         case (op_code)
             7'b0110011: current_instr_type = R_ALU;    // Register-Register ALU
@@ -247,6 +286,47 @@ module top (
             instr <= imem_data;
         end
     end
+
+controller u_controller (
+        .clk          (clk),
+        .reset        (reset),
+        .pc_wrt       (pc_wrt),
+        .op_code      (op_code),
+        .imm          (imm),
+        .rs1_val      (rs1_val),
+        .branch_taken (branch_taken),
+        .pc           (PC),
+        .pc_pl4       (pc_pl4)
+    );
+
+    ALU_handler u_alu (
+        .funct3          (funct3),
+        .op_code         (op_code),
+        .immediate       (imm[11:0]), //// this is wrong!!!!!... I think
+        .source_reg1     (rs1_val),
+        .source_reg2     (rs2_val),
+        .destination_reg (alu_out)
+    );
+
+    memory #(
+        .IMEM_INIT_FILE_PREFIX (IMEM_INIT_FILE_PREFIX),
+        .DMEM_INIT_FILE_PREFIX (DMEM_INIT_FILE_PREFIX),
+        .CLK_FREQ              (CLK_FREQ)
+    ) u_memory (
+        .clk           (clk),
+        .funct3        (funct3),
+        .dmem_wren     (dmem_wren),
+        .dmem_address  (dmem_addr),
+        .dmem_data_in  (dmem_in),
+        .imem_address  (PC),
+        .imem_data_out (imem_data),
+        .dmem_data_out (dmem_out),
+        .reset         (reset),
+        .led           (),          // Connect to a top-level port if needed
+        .red           (RGB_R),
+        .green         (RGB_G),
+        .blue          (RGB_B)
+    );
 
 endmodule
 
